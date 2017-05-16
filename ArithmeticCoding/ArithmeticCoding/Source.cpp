@@ -9,7 +9,7 @@ using namespace std;
 #define SIZE 255
 #define DEBUG 1
 
-#define FIRST_QTR 65535 / 4 + 1
+#define FIRST_QTR h[0] / 4 + 1
 #define HALF  2 * FIRST_QTR
 #define THIRD_QTR  3 * FIRST_QTR
 
@@ -37,9 +37,9 @@ string getAlpabet(string input)
 	return alphabet;
 }
 
-int* getFrequency(string input, string alphabet)
+unsigned short int* getFrequency(string input, string alphabet)
 {
-	int* frequency = new int[alphabet.size()];
+	unsigned short int* frequency = new unsigned short int[alphabet.size()];
 	for (int i = 0; i < alphabet.size(); ++i)
 	{
 		frequency[i] = 0;
@@ -72,7 +72,7 @@ int getSymbolIdx(char symbol, string alphabet)
 }
 
 /* Write bits in string */
-void write_bits1(bool bit, int bits_to_foll, string& output)  
+void write_bits(bool bit, int bits_to_foll, string& output)  
 {
 	output.push_back(bit + 48);
 	while (bits_to_foll > 0)
@@ -97,13 +97,13 @@ void write_bits(bool bit, int bits_to_foll, fstream& output)
 void encode(string input)
 {
 	string alphabet = getAlpabet(input);
-	int * frequency = getFrequency(input, alphabet);
+	unsigned short int * frequency = getFrequency(input, alphabet);
 	int lenght = input.length();
-	int h[SIZE];
-	int l[SIZE];
+	unsigned short int h[SIZE];
+	unsigned short int l[SIZE];
 	h[0] = 65535;
 	l[0] = 0;
-	int del = frequency[alphabet.size() - 1];
+	unsigned int del = frequency[alphabet.size() - 1];
 
 	fstream output("output.bin", ios_base::out | ios_base::binary);
 	//string output;
@@ -129,7 +129,7 @@ void encode(string input)
 		int symbol = getSymbolIdx(input.at(i), alphabet);
 		i += 1;
 
-		int range = h[i - 1] - l[i - 1] + 1;
+		unsigned int range = h[i - 1] - l[i - 1] + 1;
 		l[i] = l[i - 1] + (range * frequency[symbol - 1]) / del;
 		h[i] = l[i - 1] + (range * frequency[symbol]) / del - 1;
 
@@ -189,14 +189,17 @@ void encode(string input)
 
 
 //	value - в этой переменной считываем 16 бит из сжатого файла
-void decode(string filename, string alphabet, int * frequency)
+void decode(string filename, string alphabet, unsigned short int * frequency)
 {
-	int h[SIZE];
-	int l[SIZE];
+	unsigned short int h[SIZE];
+	unsigned short int l[SIZE];
 	l[0] = 0;
 	h[0] = 65535;
-	int del = frequency[alphabet.size() - 1];
+	unsigned int del = frequency[alphabet.size() - 1];
 
+	unsigned short int buffer;
+	unsigned short int newBit;
+	int bitsToGo = 0;
 
 	/* Debug part */
 	if (DEBUG)
@@ -208,10 +211,11 @@ void decode(string filename, string alphabet, int * frequency)
 	unsigned short int value;
 	input.read((char *)&value, sizeof(unsigned short int));
 
-	for (int i = 1; i < 10; ++i) // ??? WHEN STOP
+	bool stopFlag = 0;
+	for (int i = 1; !stopFlag; ++i) // ??? WHEN STOP
 	{
-		int range = h[i - 1] - l[i - 1] + 1;
-		int cum = (((value - l[i - 1]) + 1) * del - 1) / range;
+		unsigned int range = h[i - 1] - l[i - 1] + 1;
+		unsigned int cum = (((value - l[i - 1]) + 1) * del - 1) / range;
 
 		int symbol;
 		for (symbol = 1; frequency[symbol] > cum; ++symbol) {};  //в цикле нашли индекс
@@ -226,17 +230,17 @@ void decode(string filename, string alphabet, int * frequency)
 			cout << "Value: " << value << endl;
 		}
 		//cout << alphabet.at(symbol);
-		for (;;) 
+		for (;;)
 		{
-			if (h[i] >= HALF) 
+			if (h[i] >= HALF)
 			{
 				if (l[i] >= HALF)
 				{
-					value -= HALF; 
+					value -= HALF;
 					l[i] -= HALF;
 					h[i] -= HALF;
 				}
-				else if(l[i] >= FIRST_QTR && h[i] < THIRD_QTR)
+				else if (l[i] >= FIRST_QTR && h[i] < THIRD_QTR)
 				{
 					value -= FIRST_QTR;
 					l[i] -= FIRST_QTR;
@@ -249,10 +253,17 @@ void decode(string filename, string alphabet, int * frequency)
 			}
 			l[i] = 2 * l[i];
 			h[i] = 2 * h[i] + 1;
-			
+
 			//TODO
-			unsigned short int newBit;
-			input.read((char *)&newBit, sizeof(bool));
+			if (bitsToGo == 0)
+			{
+				input.read((char *)&buffer, sizeof(unsigned short int));
+				bitsToGo = 16;
+			}
+			newBit = buffer & 1;
+			buffer >>= 1;
+			bitsToGo -= 1;
+			
 			value = 2 * value + newBit;  //Добавляем еще 1 бит из файла
 		}
 	}
@@ -262,13 +273,14 @@ void decode(string filename, string alphabet, int * frequency)
 
 void main()
 {
-	string input = "compressor";
-	//string input = "That method is better than Huffman";
+	//string input = "compressor";
+	//string input = "baaa";
+	string input = "That method is better than Huffman";
 
 	encode(input);
 
 	string alphabet = getAlpabet(input);
-	int* frequency = getFrequency(input, alphabet);
+	unsigned short int* frequency = getFrequency(input, alphabet);
 
 	decode("output.bin", alphabet, frequency);
 
