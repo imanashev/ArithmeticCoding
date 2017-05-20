@@ -8,7 +8,9 @@ using namespace std;
 
 #define EOF_SYMBOL '-'
 #define SIZE 255
-#define DEBUG 1
+#define DEBUG_ENCODE 0
+#define DEBUG_DECODE 0
+
 
 #define FIRST_QTR h[0] / 4 + 1
 #define HALF  2 * FIRST_QTR
@@ -33,7 +35,7 @@ string getAlpabet(string input)
 			alphabet.push_back(input[i]);
 		}
 
-		sort(alphabet.begin() + 1, alphabet.end());
+		//sort(alphabet.begin() + 1, alphabet.end());
 	}
 	return alphabet;
 }
@@ -94,8 +96,37 @@ void write_bits(bool bit, int bits_to_foll, fstream& output)
 	}
 }
 
+unsigned short int toShort(string s) {
+	int i;
+	unsigned short int value = 0;
+	for (i = 0; i < 16; i++) 
+	{
+		/*if (i == s.size()) 
+		{
+			value >>= (15 - i);
+			return value;
+		}*/
+		if ('1' == s[i]) 
+		{
+			value = value | (1 << (15 - i));
+		}
+		//cout << bitset<16>(value) << endl;
+	}
+	return value;
+}
 
-void encode(string input)
+unsigned short int getNewBit(char s) 
+{
+	unsigned short int tmp = 0;
+	if ('1' == s) 
+	{
+		tmp = 1;
+	}
+	return tmp;
+}
+
+
+string encode(string input)
 {
 	string alphabet = getAlpabet(input);
 	unsigned short int * frequency = getFrequency(input, alphabet);
@@ -106,12 +137,11 @@ void encode(string input)
 	l[0] = 0;
 	unsigned int del = frequency[alphabet.size() - 1];
 
-	//fstream output("output.bin", ios_base::out | ios_base::binary);
 	string output;
 
 	int bits_to_foll = 0;
 
-	if(DEBUG)
+	if(DEBUG_ENCODE)
 	{
 		cout << "Input: " << input << endl;
 		cout << "Alphabet: " << alphabet << endl;
@@ -133,9 +163,9 @@ void encode(string input)
 		l[i] = l[i - 1] + (range * frequency[symbol - 1]) / del;
 		h[i] = l[i - 1] + (range * frequency[symbol]) / del - 1;
 
-		if (DEBUG)
+		if (DEBUG_ENCODE)
 		{
-			std::cout << "Symbol: " << alphabet.at(symbol) << input.at(i - 1) << endl;
+			std::cout << "Symbol: " << alphabet.at(symbol) << endl;
 
 			std::cout << "Frequency: " << frequency[symbol] - frequency[symbol - 1] <<
 				" [" << frequency[symbol - 1] << "; "<< frequency[symbol]<< "]" << endl;
@@ -172,68 +202,58 @@ void encode(string input)
 			l[i] = 2 * l[i];
 			h[i] = 2 * h[i] + 1;
 			
-			if (DEBUG) std::cout << "[" << l[i] << "; " << h[i] << ")" << endl;
+			if (DEBUG_ENCODE) std::cout << "[" << l[i] << "; " << h[i] << ")" << endl;
 		}
-		if (DEBUG) cout << "-------------" << endl;
+		if (DEBUG_ENCODE)
+		{
+			cout << "Output: " << output << endl;
+			cout << "-------------" << endl;
+		}
 	}
-	if (DEBUG)
+	if (DEBUG_ENCODE)
 	{
 		for (int i = 0; i <= input.size(); ++i){
 			std::cout << "[" << l[i] << "; " << h[i] << ")" << endl;
 		}
 		cout << "Output: " << output << endl;
-		
 	}
+	return output;
 }
 
 
-//	value - в этой переменной считываем 16 бит из сжатого файла
-void decode(string filename, string alphabet, unsigned short int * frequency)
+void decode(string input, string alphabet, unsigned short int * frequency)
 {
+	if (DEBUG_DECODE)
+	{
+		cout << "This is decode: ";
+	}
 	unsigned short int h[SIZE];
 	unsigned short int l[SIZE];
 	l[0] = 0;
 	h[0] = 65535;
 	unsigned int del = frequency[alphabet.size() - 1];
-
-	unsigned short int buffer;
-	unsigned short int newBit;
-	int bitsToGo = 0;
-
-	if (DEBUG)
-	{
-		cout << "This is decode: ";
-	}
 	
-	fstream input(filename, ios_base::in | ios_base::binary);
 	unsigned short int value;
+	value = toShort(input);
 
-	input.read(reinterpret_cast<char *>(&value), sizeof(value));
-
-
-	//input.read(reinterpret_cast<char *>(&value), sizeof(value));
-	//input.read((char*)&value, sizeof(unsigned short int));
-
-
-
-	bool stopFlag = 0;
-	for (int i = 1; !stopFlag; ++i) 
+	int index = 16;
+	for (int i = 1;; ++i)
 	{
 		unsigned int range = h[i - 1] - l[i - 1] + 1;
-		unsigned short int cum = (((value - l[i - 1]) + 1) * del - 1) / range;
+		unsigned int cum = ((value - l[i - 1] + 1) * del - 1) / range;
 
 		int symbol;
-		for (symbol = 1; frequency[symbol] < cum; ++symbol) ;  //в цикле нашли индекс
+		for (symbol = 1; frequency[symbol] <= cum; ++symbol) ;  //в цикле нашли индекс
 
-		l[i] = l[i - 1] + (range * frequency[symbol - 1]) / del - 1;
-		h[i] = l[i - 1] + (range * frequency[symbol]) / del;
+		l[i] = l[i - 1] + (range * frequency[symbol - 1]) / del;
+		h[i] = l[i - 1] + (range * frequency[symbol]) / del - 1;
 
-		if (DEBUG)
+		if (DEBUG_DECODE)
 		{
-			//cout << "Symbol: " << alphabet.at(symbol) << endl;
-			//cout << "Symbol idx: " << symbol << endl;
-			//cout << "Value: " << value << endl;
-			//cout << "----------------" << endl;
+			cout << "Symbol: " << alphabet.at(symbol) << endl;
+			cout << "Symbol idx: " << symbol << endl;
+			cout << "Value: " << value << endl;
+			cout << "----------------" << endl;
 		}
 		cout << alphabet.at(symbol);
 
@@ -261,35 +281,28 @@ void decode(string filename, string alphabet, unsigned short int * frequency)
 			l[i] = 2 * l[i];
 			h[i] = 2 * h[i] + 1;
 
-			//TODO
-			if (bitsToGo == 0)
+
+			//TODO: what to do when input ends
+			if (index < input.length())
 			{
-				//if(!input.read(reinterpret_cast<char *>(&buffer), sizeof(buffer)))
-				if (!input.read((char *)&buffer, sizeof(unsigned short int)))
-				{
-					stopFlag = 1;
-				}
-				bitsToGo = 16;
+				value = 2 * value + getNewBit(input.at(index));
 			}
-			unsigned short int mask = 1;
-			mask <<= 15;
-			newBit = buffer & mask;
-			buffer >>= 1;
-			bitsToGo -= 1;
+			else
+			{
+				value = 2 * value + getNewBit('0');
+			}
+			//if (DEBUG_DECODE) cout << "Value before: " << bitset<16>(value) << endl;
+			//value = 2 * value + getNewBit(input.at(index));  //Добавляем еще 1 бит из файла
+			//if (DEBUG_DECODE) cout << "Value after: " << bitset<16>(value) << endl;
+
+
+			if (DEBUG_DECODE) std::cout << "[" << l[i] << "; " << h[i] << ")" << endl;
+			index += 1;
 			
-
-			///*if (bitsToGo == 0)
-			//{
-			//	if (!input.read((char *)&buffer, sizeof(unsigned short int)))
-			//	{
-			//		stopFlag = 1;
-			//	}
-			//	bitsToGo = 16;
-			//}*/
-
-
-
-			value = 2 * value + newBit;  //Добавляем еще 1 бит из файла
+		}
+		if (index >= input.length() + 20) //TODO: when stop?
+		{
+			break;
 		}
 	}
 }
@@ -298,17 +311,18 @@ void decode(string filename, string alphabet, unsigned short int * frequency)
 
 void main()
 {
-	//string input = "compressor";
-	string input = "baaa";
+	string input = "compressor";
+	//string input = "baaa";
 	//string input = "hello";
 	//string input = "That method is better than Huffman";
-
-	encode(input);
 
 	string alphabet = getAlpabet(input);
 	unsigned short int* frequency = getFrequency(input, alphabet);
 
-	//decode("output.bin", alphabet, frequency);
+	string encoded = encode(input);
+	cout << "Encoded: " << encoded << endl;
+
+	decode(encoded, alphabet, frequency);
 
 	std::cout << std::endl;
 }
