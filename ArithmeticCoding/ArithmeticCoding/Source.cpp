@@ -35,7 +35,7 @@ string getAlpabet(string input)
 			alphabet.push_back(input[i]);
 		}
 
-		//sort(alphabet.begin() + 1, alphabet.end());
+		sort(alphabet.begin() + 1, alphabet.end());
 	}
 	return alphabet;
 }
@@ -101,11 +101,11 @@ unsigned short int toShort(string s) {
 	unsigned short int value = 0;
 	for (i = 0; i < 16; i++) 
 	{
-		/*if (i == s.size()) 
+		if (i == s.size()) 
 		{
-			value >>= (15 - i);
+			//value >>= i;
 			return value;
-		}*/
+		}
 		if ('1' == s[i]) 
 		{
 			value = value | (1 << (15 - i));
@@ -115,14 +115,16 @@ unsigned short int toShort(string s) {
 	return value;
 }
 
+
 unsigned short int getNewBit(char s) 
 {
-	unsigned short int tmp = 0;
+	//unsigned short int tmp = 0;
 	if ('1' == s) 
 	{
-		tmp = 1;
+		return 1;
+		//tmp = 1;
 	}
-	return tmp;
+	return 0;
 }
 
 
@@ -236,6 +238,7 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 	unsigned short int value;
 	value = toShort(input);
 
+	bool FLAG = 0;
 	int index = 16;
 	for (int i = 1;; ++i)
 	{
@@ -289,10 +292,20 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 			}
 			else
 			{
-				value = 2 * value + getNewBit('0');
+				if (FLAG)
+				{
+					value = 2 * value + getNewBit('0');
+				}
+				else
+				{
+					value = 2 * value + getNewBit('1');
+					FLAG = 1;
+				}
+
 			}
+
 			//if (DEBUG_DECODE) cout << "Value before: " << bitset<16>(value) << endl;
-			//value = 2 * value + getNewBit(input.at(index));  //Добавляем еще 1 бит из файла
+			//value = 2 * value + getNewBit(input.at(index]));  //Добавляем еще 1 бит из файла
 			//if (DEBUG_DECODE) cout << "Value after: " << bitset<16>(value) << endl;
 
 
@@ -300,7 +313,7 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 			index += 1;
 			
 		}
-		if (index >= input.length() + 20) //TODO: when stop?
+		if (index >= input.length() + 16) //TODO: when stop?
 		{
 			break;
 		}
@@ -311,10 +324,10 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 
 void main()
 {
-	string input = "compressor";
+	//string input = "compressor";
 	//string input = "baaa";
 	//string input = "hello";
-	//string input = "That method is better than Huffman";
+	string input = "That method is better than Huffman";
 
 	string alphabet = getAlpabet(input);
 	unsigned short int* frequency = getFrequency(input, alphabet);
