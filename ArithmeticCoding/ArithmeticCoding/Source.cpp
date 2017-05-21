@@ -2,11 +2,15 @@
 #include <string>
 #include <algorithm>
 #include <fstream>
+
 #include <bitset>
+
+#include <stdlib.h>
+#include <ctype.h>
 
 using namespace std;
 
-#define EOF_SYMBOL '-'
+
 #define SIZE 255
 #define DEBUG_ENCODE 0
 #define DEBUG_DECODE 0
@@ -16,10 +20,24 @@ using namespace std;
 #define HALF  2 * FIRST_QTR
 #define THIRD_QTR  3 * FIRST_QTR
 
+void gen(char* p, size_t N)
+{
+	while (N--)
+	{
+		char ch;
+		while ((ch = (char)(rand() % (127 - '0' + 1) + '0')), !isalnum(ch))
+			;
+		*p++ = ch;
+	}
+	*p = 0;
+}
+
+
 string getAlpabet(string input)
 {
 	string alphabet;
-	alphabet.push_back(EOF_SYMBOL);
+	alphabet.push_back('-');
+	alphabet.push_back('\0');
 	for (int i = 0; i < input.size(); i++)
 	{
 		int j;
@@ -43,9 +61,10 @@ string getAlpabet(string input)
 unsigned short int* getFrequency(string input, string alphabet)
 {
 	unsigned short int* frequency = new unsigned short int[alphabet.size()];
-	for (int i = 0; i < alphabet.size(); ++i)
+	frequency[0] = 0;
+	for (int i = 1; i < alphabet.size(); ++i)
 	{
-		frequency[i] = 0;
+		frequency[i] = 1;
 	}
 	for (int i = 0; i < input.size(); i++)
 	{
@@ -74,6 +93,7 @@ int getSymbolIdx(char symbol, string alphabet)
 	return 0;
 }
 
+
 /* Write bits in string */
 void write_bits(bool bit, int bits_to_foll, string& output)  
 {
@@ -85,6 +105,7 @@ void write_bits(bool bit, int bits_to_foll, string& output)
 	}
 }
 
+
 /* Write bits in file */
 void write_bits(bool bit, int bits_to_foll, fstream& output)
 {
@@ -95,6 +116,7 @@ void write_bits(bool bit, int bits_to_foll, fstream& output)
 		bits_to_foll -= 1;
 	}
 }
+
 
 unsigned short int toShort(string s) {
 	int i;
@@ -128,10 +150,11 @@ unsigned short int getNewBit(char s)
 }
 
 
-string encode(string input)
+string encode(string input, string alphabet, unsigned short int * frequency)
 {
-	string alphabet = getAlpabet(input);
-	unsigned short int * frequency = getFrequency(input, alphabet);
+	//string alphabet = getAlpabet(input);
+	//unsigned short int * frequency = getFrequency(input, alphabet);
+	input.push_back('\0');
 	int lenght = input.length();
 	unsigned short int h[SIZE];
 	unsigned short int l[SIZE];
@@ -219,11 +242,11 @@ string encode(string input)
 		}
 		cout << "Output: " << output << endl;
 	}
+
 	return output;
 }
 
-
-void decode(string input, string alphabet, unsigned short int * frequency)
+string decode(string input, string alphabet, unsigned short int * frequency)
 {
 	if (DEBUG_DECODE)
 	{
@@ -238,6 +261,7 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 	unsigned short int value;
 	value = toShort(input);
 
+	string output;
 	bool FLAG = 0;
 	int index = 16;
 	for (int i = 1;; ++i)
@@ -258,7 +282,12 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 			cout << "Value: " << value << endl;
 			cout << "----------------" << endl;
 		}
-		cout << alphabet.at(symbol);
+		if (alphabet.at(symbol) == '\0')
+		{
+			return output;
+		}
+		output.push_back(alphabet.at(symbol));
+		//cout << alphabet.at(symbol);
 
 		for (;;)
 		{
@@ -313,10 +342,12 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 			index += 1;
 			
 		}
-		if (index >= input.length() + 16) //TODO: when stop?
-		{
-			break;
-		}
+		//if (index >= input.length() + 16) //TODO: when stop?
+		//{
+		//	return output;
+		//}
+
+
 	}
 }
 
@@ -324,18 +355,44 @@ void decode(string input, string alphabet, unsigned short int * frequency)
 
 void main()
 {
+	for (int i = 0; i < 10000; ++i)
+	{
+		char s[50] = { 0 };
+		gen(s, 50);
+		string input(s);
+
+		string alphabet = getAlpabet(input);
+		unsigned short int* frequency = getFrequency(input, alphabet);
+
+		string encoded = encode(input, alphabet, frequency);
+		string decoded = decode(encoded, alphabet, frequency);
+		if (input != decoded)
+		{
+			cout << "step #" << i << endl;
+			cout << input << endl;
+			cout << decoded << endl;
+			cout << "--------------" << endl;
+		}
+		else
+		{
+			cout << "step #" << i << ": GOOD!" << endl;
+		}
+	}
+
+
+
 	//string input = "compressor";
 	//string input = "baaa";
 	//string input = "hello";
-	string input = "That method is better than Huffman";
+	//string input = "That method is better than Huffman";
 
-	string alphabet = getAlpabet(input);
-	unsigned short int* frequency = getFrequency(input, alphabet);
+	//string alphabet = getAlpabet(input);
+	//unsigned short int* frequency = getFrequency(input, alphabet);
 
-	string encoded = encode(input);
-	cout << "Encoded: " << encoded << endl;
+	//string encoded = encode(input);
+	//cout << "Encoded: " << encoded << endl;
 
-	decode(encoded, alphabet, frequency);
+	//decode(encoded, alphabet, frequency);
 
-	std::cout << std::endl;
+	//std::cout << std::endl;
 }
