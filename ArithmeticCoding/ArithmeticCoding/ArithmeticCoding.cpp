@@ -21,7 +21,7 @@ std::string getAlpabet(std::string input)
 			alphabet.push_back(input[i]);
 		}
 
-		//sort(alphabet.begin() + 1, alphabet.end());
+		//sort(alphabet.begin() + 2, alphabet.end());
 	}
 	return alphabet;
 }
